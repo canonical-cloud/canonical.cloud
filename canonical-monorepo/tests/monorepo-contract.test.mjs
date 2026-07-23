@@ -352,15 +352,15 @@ test("submodule pin verification fails closed when origin cannot be fetched", ()
   );
 });
 
-test("every app agents.md blacklists rm and whitelists git rm / git mv", () => {
+test("every app AGENTS.md blacklists rm and whitelists git rm / git mv", () => {
   for (const module of parseGitmodules()) {
-    const agents = read(path.join(module.path, "agents.md"));
-    assert.match(agents, /Command safety/, `${module.path}/agents.md needs a Command safety section`);
-    assert.match(agents, /git rm/, `${module.path}/agents.md must whitelist git rm`);
-    assert.match(agents, /git mv/, `${module.path}/agents.md must whitelist git mv`);
+    const agents = read(path.join(module.path, "AGENTS.md"));
+    assert.match(agents, /Command safety/, `${module.path}/AGENTS.md needs a Command safety section`);
+    assert.match(agents, /git rm/, `${module.path}/AGENTS.md must whitelist git rm`);
+    assert.match(agents, /git mv/, `${module.path}/AGENTS.md must whitelist git mv`);
   }
 
-  const own = read("agents.md");
+  const own = read("AGENTS.md");
   assert.match(own, /Command safety/);
   assert.match(own, /git rm/);
 });
