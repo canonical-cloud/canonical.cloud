@@ -31,6 +31,8 @@ jobs:
         with:
           node-version: "22"
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Application repository release boundary
+        run: node tests/release-boundary.mjs
       - name: client dependencies
         run: npm ci --prefix client
       - name: client tests
@@ -45,6 +47,23 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: test
         run: cargo test --workspace --all-targets --locked
+      - name: Test authentication is forbidden in release builds
+        shell: bash
+        run: |
+          set +e
+          output="$(cargo check --locked --release --features test-auth \
+            -p canonical-web-server --lib 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "test-auth unexpectedly compiled in the release profile" >&2
+            exit 1
+          fi
+          if ! grep -Fq "the test-auth feature is forbidden in release builds" <<<"$output"; then
+            echo "release build failed for an unexpected reason" >&2
+            exit 1
+          fi
       - name: Revoker dependency boundary
         shell: bash
         run: |
@@ -81,13 +100,44 @@ jobs:
               exit 1
             fi
           fi
+      - name: Assert vulnerable rkyv is not in the active Linux build graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          # RUSTSEC-2026-0235 affects rkyv 0.7.46. Cargo retains optional
+          # packages in Cargo.lock even when their activating feature is
+          # disabled. Prove that no normal, build, or dev edge reaches it for
+          # the production Linux target before applying the narrow audit ignore.
+          active_path="$(cargo tree \
+            --workspace \
+            --locked \
+            --target x86_64-unknown-linux-gnu \
+            --invert rkyv@0.7.46 \
+            --edges normal,build,dev \
+            --prefix none 2>/dev/null || true)"
+          if [ -n "$active_path" ]; then
+            printf '%s\n' "$active_path" >&2
+            echo "vulnerable rkyv entered the active Linux dependency graph" >&2
+            exit 1
+          fi
+          echo "rkyv 0.7.46 is absent from the active Linux dependency graph"
       - name: Audit Rust dependencies
         shell: bash
         run: |
           # RUSTSEC-2026-0173: unmaintained (not vulnerable) compile-time-only
           # proc-macro-error2, currently required by SeaORM's derive macros.
-          cargo audit --deny warnings \
-            --ignore RUSTSEC-2026-0173
+          # RUSTSEC-2026-0235: inactive lockfile-only rkyv entry, guarded by
+          # the active Linux graph assertion above. Do not use `--deny warnings`:
+          # cargo-audit intentionally reports accepted `--ignore` entries as
+          # allowed warnings, so that catch-all would reject the reviewed
+          # exceptions themselves. Unignored vulnerabilities still fail by
+          # default, while the explicit categories below retain strict policy.
+          cargo audit \
+            --deny unmaintained \
+            --deny unsound \
+            --deny yanked \
+            --ignore RUSTSEC-2026-0173 \
+            --ignore RUSTSEC-2026-0235
 
   postgres-rls:
     runs-on: ubuntu-latest
@@ -220,7 +270,7 @@ jobs:
         run: |
           docker run --detach --name crdb --publish 26257:26257 \
             cockroachdb/cockroach:v25.2.4 start-single-node --insecure
-          for attempt in {1..60}; do
+          for _ in {1..60}; do
             if docker exec crdb cockroach sql --insecure -e "SELECT 1" >/dev/null 2>&1; then
               exit 0
             fi
@@ -259,7 +309,7 @@ jobs:
         with:
           key: browser-e2e
       - name: Build server binary
-        run: cargo build --locked --bin canonical-web-server
+        run: cargo build --locked --features test-auth --bin canonical-web-server
       - name: Build client bundle
         run: |
           npm ci --prefix client
@@ -312,6 +362,8 @@ jobs:
             --env DATABASE_MAX_CONNECTIONS=1 \
             --env SUPABASE_URL=http://127.0.0.1:54321 \
             --env SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_only \
+            --env CANONICAL_API_URL=http://127.0.0.1:18080 \
+            --env CANONICAL_WEB_SERVICE_TOKEN=ci-only-canonical-web-service-token-00000000000000000000000000000000 \
             canonical-web-server:ci
           test "$(docker inspect --format '{{.Config.User}}' canonical-web-server-ci)" = "65532:65532"
           for attempt in {1..30}; do
