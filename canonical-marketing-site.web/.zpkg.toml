@@ -25,6 +25,4 @@ adapter = "none"
 dir = ".vendor/.zed"
 
 [scripts]
-test = "npm test"
-browser-test = "npm run test:browser"
-build = "npm run build"
+test = "npm test && npm run test:browser && npm run build"
