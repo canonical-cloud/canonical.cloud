@@ -16,7 +16,7 @@
     "./sql": "./sql/schema.sql",
     "./typescript": "./generated/typescript/index.ts",
     "./rust": "./generated/rust/src/lib.rs",
-    "./dart": "./generated/dart/lib/quote_v1.dart",
+    "./dart": "./generated/dart/lib/canonical_interfaces.dart",
     "./python": "./generated/python/canonical_interfaces.py",
     "./go": "./generated/go/interfaces.go"
   }
