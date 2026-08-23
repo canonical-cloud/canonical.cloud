@@ -1,0 +1,392 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "canonical.cloud — SOC 2, FedRAMP & HIPAA compliance audits via CPA and technology services." } = Astro.props;
+
+// Base-aware URLs so links/assets resolve whether served at / (local) or
+// behind the gateway prefix (/canonical/ in the cluster). BASE_URL includes a
+// trailing slash.
+const baseNoSlash = import.meta.env.BASE_URL.replace(/\/+$/, '');
+const homeHref = `${baseNoSlash}/`;
+const faviconHref = `${baseNoSlash}/favicon.svg`;
+const siteScriptHref = `${baseNoSlash}/site.js`;
+const quoteHref = 'https://app.canonical.plus/u/quote';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0a0f18" />
+    <link rel="icon" type="image/svg+xml" href={faviconHref} />
+    <title>{title} | canonical.cloud</title>
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={`${title} | canonical.cloud`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <nav class="nav" id="main-nav" aria-label="Primary navigation">
+      <div class="nav__inner container">
+        <a href={homeHref} class="nav__logo" id="nav-logo">
+          <svg class="nav__logo-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <g class="brand-mark__primary" stroke="currentColor" stroke-width="9.5" stroke-linecap="round">
+              <path d="M8.55 25.36A21.5 21.5 0 0 1 22.36 11.55"/>
+              <path d="M35.64 11.55A21.5 21.5 0 0 1 44.98 17.62"/>
+            </g>
+            <g class="brand-mark__secondary" stroke="currentColor" stroke-width="9.5" stroke-linecap="round">
+              <path d="M44.98 46.38A21.5 21.5 0 0 1 35.64 52.45"/>
+              <path d="M22.36 52.45A21.5 21.5 0 0 1 8.55 38.64"/>
+            </g>
+            <g class="brand-mark__primary" fill="currentColor">
+              <rect x="40.5" y="28.25" width="18" height="7.5" rx="2.5"/>
+              <rect x="45.75" y="23" width="7.5" height="18" rx="2.5"/>
+            </g>
+          </svg>
+          <span class="nav__logo-text">
+            <span class="nav__logo-aardvark">CANONICAL</span><span class="nav__logo-compliance">.CLOUD</span>
+          </span>
+        </a>
+
+        <div class="nav__links" id="nav-links">
+          <a href="#services" class="nav__link" id="nav-services">Services</a>
+          <a href="#process" class="nav__link" id="nav-process">Process</a>
+          <a href="#frameworks" class="nav__link" id="nav-frameworks">Frameworks</a>
+          <a href="#about" class="nav__link" id="nav-about">About</a>
+          <a href={quoteHref} class="nav__link" id="nav-sign-in">Sign in</a>
+          <a href={quoteHref} class="btn btn--primary nav__cta" id="nav-quote">Get a quote · under 5 min</a>
+        </div>
+
+        <button
+          class="nav__mobile-toggle"
+          id="nav-toggle"
+          type="button"
+          aria-controls="nav-links"
+          aria-expanded="false"
+          aria-label="Open navigation"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </nav>
+
+    <main id="main-content" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="footer" id="site-footer">
+      <div class="container">
+        <div class="footer__top">
+          <div class="footer__brand">
+            <a href={homeHref} class="nav__logo">
+              <svg class="nav__logo-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <g class="brand-mark__primary" stroke="currentColor" stroke-width="9.5" stroke-linecap="round">
+                  <path d="M8.55 25.36A21.5 21.5 0 0 1 22.36 11.55"/>
+                  <path d="M35.64 11.55A21.5 21.5 0 0 1 44.98 17.62"/>
+                </g>
+                <g class="brand-mark__secondary" stroke="currentColor" stroke-width="9.5" stroke-linecap="round">
+                  <path d="M44.98 46.38A21.5 21.5 0 0 1 35.64 52.45"/>
+                  <path d="M22.36 52.45A21.5 21.5 0 0 1 8.55 38.64"/>
+                </g>
+                <g class="brand-mark__primary" fill="currentColor">
+                  <rect x="40.5" y="28.25" width="18" height="7.5" rx="2.5"/>
+                  <rect x="45.75" y="23" width="7.5" height="18" rx="2.5"/>
+                </g>
+              </svg>
+              <span class="nav__logo-text">
+                <span class="nav__logo-aardvark">CANONICAL</span><span class="nav__logo-compliance">.CLOUD</span>
+              </span>
+            </a>
+            <p class="footer__tagline">SOC 2, FedRAMP & HIPAA compliance<br/>audits powered by CPA + technology.</p>
+          </div>
+
+          <nav class="footer__columns" aria-label="Footer navigation">
+            <div class="footer__col">
+              <h4 class="footer__col-title">Services</h4>
+              <a href="#services" class="footer__link">SOC 2 Attestation</a>
+              <a href="#services" class="footer__link">FedRAMP Authorization</a>
+              <a href="#services" class="footer__link">HIPAA Compliance</a>
+              <a href="#services" class="footer__link">vCISO Services</a>
+            </div>
+            <div class="footer__col">
+              <h4 class="footer__col-title">Company</h4>
+              <a href="#about" class="footer__link">About Us</a>
+              <a href="#process" class="footer__link">Our Process</a>
+              <a href="#frameworks" class="footer__link">Frameworks</a>
+              <a href="#contact" class="footer__link">Contact</a>
+            </div>
+            <div class="footer__col">
+              <h4 class="footer__col-title">Account</h4>
+              <a href={quoteHref} class="footer__link">Sign in</a>
+              <a href={quoteHref} class="footer__link">Get a quote in under 5 minutes</a>
+            </div>
+            <div class="footer__col">
+              <h4 class="footer__col-title">Connect</h4>
+              <a href="https://dancingdragons.cc" target="_blank" rel="noopener noreferrer" class="footer__link">Dancing Dragons ↗</a>
+              <a href="https://dragonteam.co" target="_blank" rel="noopener noreferrer" class="footer__link">Dragon Team ↗</a>
+              <a href="mailto:compliance@canonical.cloud" class="footer__link">compliance@canonical.cloud</a>
+            </div>
+          </nav>
+        </div>
+
+        <div class="footer__bottom">
+          <p class="footer__copy">&copy; {new Date().getFullYear()} canonical.cloud. All rights reserved.</p>
+          <p class="footer__copy">A <a href="https://dancingdragons.cc" target="_blank" rel="noopener noreferrer" class="footer__link--inline">Dancing Dragons</a> company.</p>
+        </div>
+      </div>
+    </footer>
+
+    <style>
+      .skip-link {
+        position: fixed;
+        top: var(--space-sm);
+        left: var(--space-sm);
+        z-index: 2000;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        background: var(--av-text-primary);
+        color: var(--av-black);
+        font-weight: 700;
+        transform: translateY(calc(-100% - var(--space-xl)));
+        transition: transform var(--duration-fast) var(--ease-out);
+      }
+
+      .skip-link:focus-visible {
+        transform: translateY(0);
+      }
+
+      #main-content:focus-visible {
+        outline-offset: -3px;
+      }
+
+      :global([id]:target) {
+        scroll-margin-top: calc(var(--nav-height) + var(--space-md));
+      }
+
+      /* ── Navigation ── */
+      .nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        height: var(--nav-height);
+        background: rgba(10, 15, 24, 0.85);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-bottom: 1px solid var(--av-border);
+      }
+
+      .nav__inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 100%;
+      }
+
+      .nav__logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .nav__logo-icon {
+        width: 32px;
+        height: 32px;
+        flex: 0 0 auto;
+      }
+
+      .brand-mark__primary {
+        color: var(--av-emerald);
+      }
+
+      .brand-mark__secondary {
+        color: var(--av-teal);
+      }
+
+      .nav__logo-text {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+
+      .nav__logo-aardvark {
+        color: var(--av-text-primary);
+      }
+
+      .nav__logo-compliance {
+        color: var(--av-teal);
+      }
+
+      .nav__links {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xl);
+      }
+
+      .nav__link {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--av-text-secondary);
+        transition: color var(--duration-fast) var(--ease-out);
+        position: relative;
+      }
+
+      .nav__link::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--av-teal);
+        transition: width var(--duration-normal) var(--ease-out);
+      }
+
+      .nav__link:hover {
+        color: var(--av-text-primary);
+      }
+
+      .nav__link:hover::after {
+        width: 100%;
+      }
+
+      .nav__cta {
+        padding: 0.5rem 1.25rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+      }
+
+      .nav__mobile-toggle {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        padding: 4px;
+      }
+
+      .nav__mobile-toggle span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        background: var(--av-text-secondary);
+        border-radius: 2px;
+        transition: all var(--duration-fast) var(--ease-out);
+      }
+
+      /* ── Footer ── */
+      .footer {
+        border-top: 1px solid var(--av-border);
+        padding: var(--space-4xl) 0 var(--space-xl);
+        background: var(--av-black);
+      }
+
+      .footer__top {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-4xl);
+        margin-bottom: var(--space-3xl);
+      }
+
+      .footer__brand {
+        max-width: 300px;
+      }
+
+      .footer__tagline {
+        margin-top: var(--space-md);
+        font-size: 0.95rem;
+        color: var(--av-text-muted);
+        line-height: 1.6;
+      }
+
+      .footer__columns {
+        display: flex;
+        gap: var(--space-3xl);
+      }
+
+      .footer__col {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .footer__col-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--av-text-primary);
+        margin-bottom: var(--space-sm);
+      }
+
+      .footer__link {
+        font-size: 0.9rem;
+        color: var(--av-text-muted);
+        transition: color var(--duration-fast) var(--ease-out);
+      }
+
+      .footer__link:hover {
+        color: var(--av-teal);
+      }
+
+      .footer__bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: var(--space-xl);
+        border-top: 1px solid var(--av-border);
+      }
+
+      .footer__copy {
+        font-size: 0.8rem;
+        color: var(--av-text-muted);
+      }
+
+      .footer__link--inline {
+        color: var(--av-teal);
+        transition: opacity var(--duration-fast);
+      }
+
+      .footer__link--inline:hover {
+        opacity: 0.8;
+      }
+
+      @media (max-width: 768px) {
+        .nav__links {
+          display: none;
+        }
+
+        .nav__mobile-toggle {
+          display: flex;
+        }
+
+        .footer__top {
+          flex-direction: column;
+          gap: var(--space-2xl);
+        }
+
+        .footer__columns {
+          flex-wrap: wrap;
+          gap: var(--space-2xl);
+        }
+
+        .footer__bottom {
+          flex-direction: column;
+          gap: var(--space-sm);
+          text-align: center;
+        }
+      }
+    </style>
+
+    <script type="module" src={siteScriptHref}></script>
+  </body>
+</html>
