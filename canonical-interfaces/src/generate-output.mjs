@@ -6,7 +6,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build as buildAdapters, loadTypes } from "./generate.mjs";
-import { emitQuoteDart } from "./generate-quote-dart.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
@@ -25,7 +24,6 @@ export function build() {
     throw new Error("generated Rust/WASM manifest already owns the package entrypoint");
   }
   files[wasmManifest] = manifest.replace(generatedLibBlock, packagedLibBlock);
-  Object.assign(files, emitQuoteDart(loadTypes()));
   return files;
 }
 
