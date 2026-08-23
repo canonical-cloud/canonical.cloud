@@ -10,7 +10,10 @@
     "preview": "astro preview",
     "astro": "astro",
     "test": "npm run build && node --test tests/site-contract.test.mjs tests/csp-contract.test.mjs tests/actions-contract.test.mjs",
-    "test:browser": "npm run build && node --test --test-concurrency=1 --test-timeout=120000 tests/*-playwright.test.mjs tests/*-puppeteer.test.mjs"
+    "test:browser": "npm run build && node --test --test-concurrency=1 --test-timeout=120000 tests/*-playwright.test.mjs tests/*-puppeteer.test.mjs",
+    "lint:ores": "if [ -f ../.ores-lint/lint.sh ]; then sh ../.ores-lint/lint.sh; else echo 'ores-lint not installed'; fi",
+    "prepublishOnly": "npm run lint:ores",
+    "prebuild": "npm run lint:ores"
   },
   "dependencies": {
     "astro": "^7.1.6"
@@ -18,5 +21,13 @@
   "devDependencies": {
     "playwright": "^1.62.1",
     "puppeteer": "^25.4.0"
+  },
+  "oresLint": {
+    "note": "Declared, not installed. ores-lint resolves these from a global install - see .ores-lint/README.md",
+    "requires": {
+      "eslint": ">=9",
+      "typescript-eslint": ">=8 (optional; without it .ts files are skipped)"
+    },
+    "install": "npm i -g eslint typescript-eslint"
   }
 }
