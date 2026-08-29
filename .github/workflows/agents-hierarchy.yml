@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: canonical-cloud/canonical.cloud
-          ref: 5598aec6873e1a16b7e6785acff6092229b82bae
+          ref: d2cd8d0b1c267d92e7e6d83954e27787ceb6c366
           path: .agents-validator
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
