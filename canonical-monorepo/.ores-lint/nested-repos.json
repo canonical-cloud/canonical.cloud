@@ -1,0 +1,5 @@
+[
+ "apps/canonical-interfaces",
+ "apps/canonical-marketing-site.web",
+ "apps/canonical-web-server.rs"
+]
