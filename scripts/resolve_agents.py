@@ -26,7 +26,6 @@ TOOL_POINTER = """# Agent instructions
 Canonical repository instructions live in [`agents.md`](../agents.md).
 """
 POINTERS = {
-    Path("AGENTS.md"): ROOT_POINTER,
     Path(".claude/CLAUDE.md"): TOOL_POINTER,
     Path(".gemini/GEMINI.md"): TOOL_POINTER,
     Path(".openai/AGENTS.md"): TOOL_POINTER,
@@ -123,6 +122,22 @@ def validate_layout(root: Path) -> None:
         raise DiscoveryError("canonical agents.md is unexpectedly small")
 
     failures: list[str] = []
+    root_pointer = root / "AGENTS.md"
+    if root_pointer.exists() or root_pointer.is_symlink():
+        try:
+            # On a case-insensitive filesystem, a lowercase-only checkout also
+            # resolves ``AGENTS.md`` to the canonical file. Treat that alias as
+            # absence; only validate an independently tracked compatibility
+            # pointer on case-sensitive filesystems.
+            if not root_pointer.samefile(canonical):
+                actual = root_pointer.read_text(encoding="utf-8")
+                if actual != ROOT_POINTER:
+                    failures.append("AGENTS.md: must be the minimal pointer to agents.md")
+                if actual == canonical_text:
+                    failures.append("AGENTS.md: duplicates canonical instructions")
+        except (OSError, UnicodeError) as error:
+            failures.append(f"AGENTS.md: {error}")
+
     for relative, expected in POINTERS.items():
         pointer = root / relative
         try:
@@ -131,8 +146,7 @@ def validate_layout(root: Path) -> None:
             failures.append(f"{relative}: {error}")
             continue
         if actual != expected:
-            target = "agents.md" if relative == Path("AGENTS.md") else "../agents.md"
-            failures.append(f"{relative}: must be the minimal pointer to {target}")
+            failures.append(f"{relative}: must be the minimal pointer to ../agents.md")
         if actual == canonical_text:
             failures.append(f"{relative}: duplicates canonical instructions")
 
@@ -218,6 +232,15 @@ def self_test() -> None:
                 print("unreadable-file check skipped: current user can still read mode 000")
         finally:
             unreadable.chmod(0o600)
+
+        layout_root = Path(temporary).resolve(strict=True) / "layout"
+        _write(
+            layout_root / "agents.md",
+            "# Canonical instructions\n\n" + "portable lowercase guidance " * 4 + "\n",
+        )
+        for relative, expected_pointer in POINTERS.items():
+            _write(layout_root / relative, expected_pointer)
+        validate_layout(layout_root)
 
     print("agents.md hierarchy self-test: PASS")
 

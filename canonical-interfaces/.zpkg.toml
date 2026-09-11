@@ -18,7 +18,6 @@ exclude = [".env", ".env.*", ".direnv/**", ".zed/**", ".zed-pack/**", "tmp/**", 
 
 [targets.repository]
 dir = "."
-name = "canonical-interfaces-repository"
 
 [targets.typescript]
 dir = "generated/typescript"

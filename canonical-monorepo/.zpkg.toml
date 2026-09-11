@@ -25,7 +25,6 @@ dir = ".vendor/.zed"
 
 [targets.repository]
 dir = "."
-name = "canonical-monorepo-repository"
 
 [scripts]
 test = "python3 scripts/verify-zed-submodules.py"
