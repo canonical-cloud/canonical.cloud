@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Discover and validate hierarchical lowercase ``agents.md`` instructions.
+"""Discover and validate hierarchical ``AGENTS.md`` instructions.
 
 Discovery resolves the starting directory, walks only its ancestors to the
-filesystem root, reads lowercase ``agents.md`` files root-to-leaf, deduplicates
+filesystem root, reads canonical ``AGENTS.md`` files root-to-leaf, deduplicates
 resolved files by inode, and reports broken, cyclic, non-regular, or unreadable
 candidates. Sibling directories are never searched.
 """
@@ -17,13 +17,9 @@ import tempfile
 from pathlib import Path
 from typing import Iterable, Sequence
 
-ROOT_POINTER = """# Agent instructions
-
-Canonical repository instructions live in [`agents.md`](agents.md).
-"""
 TOOL_POINTER = """# Agent instructions
 
-Canonical repository instructions live in [`agents.md`](../agents.md).
+Canonical repository instructions live in [`AGENTS.md`](../AGENTS.md).
 """
 POINTERS = {
     Path(".claude/CLAUDE.md"): TOOL_POINTER,
@@ -49,7 +45,7 @@ def _ancestors_root_to_leaf(directory: Path) -> list[Path]:
 
 
 def discover(start: Path | str) -> list[Path]:
-    """Return readable lowercase ``agents.md`` files in root-to-leaf order."""
+    """Return readable canonical ``AGENTS.md`` files in root-to-leaf order."""
 
     requested = Path(start).expanduser()
     try:
@@ -64,7 +60,7 @@ def discover(start: Path | str) -> list[Path]:
     errors: list[str] = []
 
     for directory in _ancestors_root_to_leaf(resolved_start):
-        candidate = directory / "agents.md"
+        candidate = directory / "AGENTS.md"
         if not candidate.exists() and not candidate.is_symlink():
             continue
         try:
@@ -86,7 +82,7 @@ def discover(start: Path | str) -> list[Path]:
 
     if errors:
         details = "\n".join(f"- {message}" for message in errors)
-        raise DiscoveryError(f"unusable agents.md candidate(s):\n{details}")
+        raise DiscoveryError(f"unusable AGENTS.md candidate(s):\n{details}")
     return discovered
 
 
@@ -114,29 +110,24 @@ def resolve_repository_root(value: Path | None) -> Path:
 
 
 def validate_layout(root: Path) -> None:
-    canonical = root / "agents.md"
+    canonical = root / "AGENTS.md"
     if not canonical.is_file():
         raise DiscoveryError(f"missing canonical instruction file: {canonical}")
     canonical_text = canonical.read_text(encoding="utf-8")
     if len(canonical_text.strip()) < 80:
-        raise DiscoveryError("canonical agents.md is unexpectedly small")
+        raise DiscoveryError("canonical AGENTS.md is unexpectedly small")
 
     failures: list[str] = []
-    root_pointer = root / "AGENTS.md"
-    if root_pointer.exists() or root_pointer.is_symlink():
+    lowercase_alias = root / "agents.md"
+    if lowercase_alias.exists() or lowercase_alias.is_symlink():
         try:
-            # On a case-insensitive filesystem, a lowercase-only checkout also
-            # resolves ``AGENTS.md`` to the canonical file. Treat that alias as
-            # absence; only validate an independently tracked compatibility
-            # pointer on case-sensitive filesystems.
-            if not root_pointer.samefile(canonical):
-                actual = root_pointer.read_text(encoding="utf-8")
-                if actual != ROOT_POINTER:
-                    failures.append("AGENTS.md: must be the minimal pointer to agents.md")
-                if actual == canonical_text:
-                    failures.append("AGENTS.md: duplicates canonical instructions")
-        except (OSError, UnicodeError) as error:
-            failures.append(f"AGENTS.md: {error}")
+            # On case-insensitive filesystems the lowercase spelling can resolve
+            # to the same tracked AGENTS.md. Only reject an independently tracked
+            # lowercase authority on case-sensitive filesystems.
+            if not lowercase_alias.samefile(canonical):
+                failures.append("agents.md: non-canonical duplicate/pointer is not allowed")
+        except (OSError, RuntimeError) as error:
+            failures.append(f"agents.md: {error}")
 
     for relative, expected in POINTERS.items():
         pointer = root / relative
@@ -146,7 +137,7 @@ def validate_layout(root: Path) -> None:
             failures.append(f"{relative}: {error}")
             continue
         if actual != expected:
-            failures.append(f"{relative}: must be the minimal pointer to ../agents.md")
+            failures.append(f"{relative}: must be the minimal pointer to ../AGENTS.md")
         if actual == canonical_text:
             failures.append(f"{relative}: duplicates canonical instructions")
 
@@ -169,13 +160,13 @@ def self_test() -> None:
         sibling = root / "sibling"
         nested.mkdir(parents=True)
         sibling.mkdir(parents=True)
-        _write(root / "agents.md", "root instructions\n")
-        _write(root / "services" / "agents.md", "service instructions\n")
-        _write(sibling / "agents.md", "sibling instructions must not load\n")
+        _write(root / "AGENTS.md", "root instructions\n")
+        _write(root / "services" / "AGENTS.md", "service instructions\n")
+        _write(sibling / "AGENTS.md", "sibling instructions must not load\n")
 
         expected = [
-            (root / "agents.md").resolve(strict=True),
-            (root / "services" / "agents.md").resolve(strict=True),
+            (root / "AGENTS.md").resolve(strict=True),
+            (root / "services" / "AGENTS.md").resolve(strict=True),
         ]
         chain = discover(nested)
         if chain != expected:
@@ -184,19 +175,19 @@ def self_test() -> None:
         for path in chain:
             print(f"- {path.relative_to(root)}")
 
-        duplicate = root / "services" / "api" / "agents.md"
-        duplicate.symlink_to(root / "agents.md")
+        duplicate = root / "services" / "api" / "AGENTS.md"
+        duplicate.symlink_to(root / "AGENTS.md")
         if discover(nested) != expected:
             raise AssertionError("resolved-file deduplication failed")
 
         broken_root = root / "broken"
         broken_leaf = broken_root / "leaf"
         broken_leaf.mkdir(parents=True)
-        (broken_root / "agents.md").symlink_to(root / "missing.md")
+        (broken_root / "AGENTS.md").symlink_to(root / "missing.md")
         try:
             discover(broken_leaf)
         except DiscoveryError as error:
-            if "broken/agents.md" not in str(error):
+            if "broken/AGENTS.md" not in str(error):
                 raise AssertionError("broken-link diagnostic omitted the candidate") from error
         else:
             raise AssertionError("broken symlink was not reported")
@@ -204,11 +195,11 @@ def self_test() -> None:
         cycle_root = root / "cycle"
         cycle_leaf = cycle_root / "leaf"
         cycle_leaf.mkdir(parents=True)
-        (cycle_root / "agents.md").symlink_to(cycle_root / "agents.md")
+        (cycle_root / "AGENTS.md").symlink_to(cycle_root / "AGENTS.md")
         try:
             discover(cycle_leaf)
         except DiscoveryError as error:
-            if "cycle/agents.md" not in str(error):
+            if "cycle/AGENTS.md" not in str(error):
                 raise AssertionError("cycle diagnostic omitted the candidate") from error
         else:
             raise AssertionError("symlink cycle was not reported")
@@ -216,7 +207,7 @@ def self_test() -> None:
         unreadable_root = root / "unreadable"
         unreadable_leaf = unreadable_root / "leaf"
         unreadable_leaf.mkdir(parents=True)
-        unreadable = unreadable_root / "agents.md"
+        unreadable = unreadable_root / "AGENTS.md"
         _write(unreadable, "private instructions\n")
         unreadable.chmod(0)
         try:
@@ -224,7 +215,7 @@ def self_test() -> None:
                 try:
                     discover(unreadable_leaf)
                 except DiscoveryError as error:
-                    if "unreadable/agents.md" not in str(error):
+                    if "unreadable/AGENTS.md" not in str(error):
                         raise AssertionError("unreadable diagnostic omitted the candidate") from error
                 else:
                     raise AssertionError("unreadable file was not reported")
@@ -235,14 +226,30 @@ def self_test() -> None:
 
         layout_root = Path(temporary).resolve(strict=True) / "layout"
         _write(
-            layout_root / "agents.md",
-            "# Canonical instructions\n\n" + "portable lowercase guidance " * 4 + "\n",
+            layout_root / "AGENTS.md",
+            "# Canonical instructions\n\n" + "portable uppercase guidance " * 4 + "\n",
         )
         for relative, expected_pointer in POINTERS.items():
             _write(layout_root / relative, expected_pointer)
         validate_layout(layout_root)
 
-    print("agents.md hierarchy self-test: PASS")
+        if os.name != "nt":
+            lowercase = layout_root / "agents.md"
+            try:
+                _write(lowercase, "# Competing lowercase authority\n" + "x" * 100)
+                if lowercase.resolve(strict=True) != (layout_root / "AGENTS.md").resolve(strict=True):
+                    try:
+                        validate_layout(layout_root)
+                    except DiscoveryError as error:
+                        if "non-canonical" not in str(error):
+                            raise AssertionError("lowercase-authority diagnostic is unclear") from error
+                    else:
+                        raise AssertionError("competing lowercase authority was not rejected")
+            finally:
+                if lowercase.exists() and not lowercase.samefile(layout_root / "AGENTS.md"):
+                    lowercase.unlink()
+
+    print("AGENTS.md hierarchy self-test: PASS")
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
