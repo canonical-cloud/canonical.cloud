@@ -59,7 +59,7 @@ keep it that way.
 
 ## Command safety
 
-Follow each subrepo's own `agents.md`; all of them blacklist destructive
+Follow each subrepo's own `AGENTS.md`; all of them blacklist destructive
 shell commands (`rm -rf`, `git clean -fdx`, force-pushes to `main`, …) and
 whitelist `git rm` / `git mv` so removals stay reviewable.
 
@@ -75,8 +75,9 @@ To sync:
 1. **Commit your work first** (`git add` + `git commit`) so the tree is clean —
    pull/merge only into a clean tree. `git pull` / `git merge` aborts when an
    incoming change touches a file you have edited, and even when it doesn't it
-   buries the merge in your uncommitted work. (Can't commit yet? `git stash`,
-   then `git stash pop` after step 3.)
+   buries the merge in your uncommitted work. If the current branch cannot hold
+   the work yet, commit it to a visible scratch branch and push that branch
+   rather than using a stash as storage.
 2. `git fetch --all --prune` — safe any time; it only updates tracking refs.
 3. `git pull` (fetch + merge) — or `git merge` the upstream branch — to
    integrate the remote's commits.
