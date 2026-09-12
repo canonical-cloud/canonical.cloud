@@ -1,0 +1,21 @@
+/target
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Built Astro marketing site. NOT committed — deployment builds it from
+# canonical-marketing-site.web and hands it to this server via STATIC_DIR.
+# For local dev, point STATIC_DIR at ../canonical-marketing-site.web/dist.
+/static
+
+# Scratch / git worktrees (tmp/worktrees/*)
+tmp/
+
+# Browser e2e dependencies (installed on demand by CI / local runs).
+tests/browser/node_modules/
+tmp
+temp
+tmp/worktrees
+temp/worktrees
