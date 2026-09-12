@@ -32,6 +32,7 @@ const fail = (msg) => { throw new GenError(msg); };
 const oneLine = (s) => String(s || "").replace(/\s+/g, " ").trim();
 const pascal = (s) => s.split(/[_\-\s]+/).map((w) => (w ? w[0].toUpperCase() + w.slice(1) : "")).join("");
 const snake = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+const camel = (s) => s.replace(/[_\-]([a-z0-9])/g, (_, c) => c.toUpperCase());
 // Comment-escapers so a description can never break the generated file.
 const cLine = (s) => oneLine(s);                                  // // and /// and #
 const cBlock = (s) => oneLine(s).replace(/\*\//g, "*\\/");        // /** ... */
@@ -41,6 +42,14 @@ const RUST_KEYWORDS = new Set([
   "as","break","const","continue","crate","dyn","else","enum","extern","false","fn","for","if","impl",
   "in","let","loop","match","mod","move","mut","pub","ref","return","self","static","struct","super",
   "trait","true","type","unsafe","use","where","while","async","await","box","union",
+]);
+// Dart reserved words that can never be used as a plain identifier. Contextual
+// and built-in identifiers (`await`, `dynamic`, `late`, …) are legal as field
+// names, so they are deliberately not listed here.
+const DART_KEYWORDS = new Set([
+  "assert","break","case","catch","class","const","continue","default","do","else","enum","extends",
+  "false","final","finally","for","if","in","is","new","null","rethrow","return","super","switch",
+  "this","throw","true","try","var","void","while","with",
 ]);
 const FIELD_RE = /^(?:[a-z][a-z0-9]*(?:_[a-z0-9]+)*|[a-z][A-Za-z0-9]*)$/;
 
@@ -94,6 +103,17 @@ function loadTypes() {
           const nonNullTypes = pschema.type.filter((type) => type !== "null");
           if (!pschema.type.includes("null") || nonNullTypes.length !== 1) {
             fail(`${file}:${name}.${pname}: only one scalar type plus null is supported`);
+          }
+        }
+        // A null-valued keyword is never valid JSON Schema, and it is worse than
+        // a wrong value: `null !== undefined`, so a consumer's `if (rule.pattern
+        // !== undefined)` guard still fires and builds `new RegExp(null)`, which
+        // silently matches against /null/. src/quote-schema-semantic-merge-guards
+        // catches this in CI; rejecting it here also stops `npm run generate`
+        // from emitting adapters from a schema that is already invalid.
+        for (const [keyword, value] of Object.entries(pschema)) {
+          if (value === null) {
+            fail(`${file}:${name}.${pname}: keyword "${keyword}" is null; omit the keyword instead`);
           }
         }
         return { name: pname, schema: pschema, required: required.has(pname), description: pschema.description || "" };
@@ -173,6 +193,18 @@ function goType(s) {
     case "boolean": return "bool";
     case "array": return `[]${goType(s.items || {})}`;
     default: return "map[string]any";
+  }
+}
+function dartType(s) {
+  s = nonNullSchema(s);
+  const r = refName(s); if (r) return r;
+  switch (s.type) {
+    case "string": return "String";
+    case "integer": return "int";
+    case "number": return "double";
+    case "boolean": return "bool";
+    case "array": return `List<${dartType(s.items || {})}>`;
+    default: return "Map<String, Object?>";
   }
 }
 
@@ -336,13 +368,146 @@ function emitGo(types) {
   return { "go/interfaces.go": out.join("\n") };
 }
 
+// --- dart --------------------------------------------------------------------
+
+// Dart has no structural types, so each $def becomes a `final class` with an
+// explicit `fromJson`/`toJson` pair. Enum-valued fields stay `String` on the
+// model (an unknown server value must not throw inside a Flutter app the way a
+// strict Dart `enum` decode would); the permitted values are emitted alongside
+// as constants so callers still get the vocabulary Rust and TypeScript get.
+const dartIdent = (wireName) => {
+  const name = camel(wireName);
+  return DART_KEYWORDS.has(name) ? `${name}_` : name;
+};
+// A Dart-safe constant name for an enum *value* (e.g. "iso_27001" -> iso27001).
+const dartConstName = (value) => {
+  const name = camel(String(value).replace(/[^A-Za-z0-9_-]/g, "_"));
+  const safe = /^[0-9]/.test(name) ? `v${name}` : name;
+  return DART_KEYWORDS.has(safe) ? `${safe}_` : safe;
+};
+
+function dartDecode(schema, expr) {
+  const s = nonNullSchema(schema);
+  const r = refName(s);
+  if (r) return `${r}.fromJson((${expr} as Map).cast<String, Object?>())`;
+  switch (s.type) {
+    case "string": return `${expr} as String`;
+    case "integer": return `${expr} as int`;
+    case "number": return `(${expr} as num).toDouble()`;
+    case "boolean": return `${expr} as bool`;
+    case "array": {
+      const itemRef = refName(nonNullSchema(s.items || {}));
+      return itemRef
+        ? `(${expr} as List).map((value) => ${itemRef}.fromJson((value as Map).cast<String, Object?>())).toList(growable: false)`
+        : `(${expr} as List).cast<${dartType(s.items || {})}>()`;
+    }
+    default: return `(${expr} as Map).cast<String, Object?>()`;
+  }
+}
+
+// `nullable` drives `?.` so a required-but-nullable ref or list does not throw
+// on encode. Scalars pass through untouched.
+function dartEncode(schema, expr, nullable) {
+  const s = nonNullSchema(schema);
+  const access = nullable ? "?." : ".";
+  if (refName(s)) return `${expr}${access}toJson()`;
+  if (s.type === "array" && refName(nonNullSchema(s.items || {}))) {
+    return `${expr}${access}map((value) => value.toJson()).toList(growable: false)`;
+  }
+  return expr;
+}
+
+function emitDart(types) {
+  const out = [`// ${BANNER}`, ""];
+
+  for (const [enumName, values] of collectEnums(types)) {
+    out.push(`/// Permitted wire values for the fields typed as \`${enumName}\`.`);
+    out.push(`abstract final class ${enumName} {`);
+    const constNames = new Map();
+    for (const v of values) {
+      const c = dartConstName(v);
+      if (constNames.has(c)) fail(`${enumName}: values "${v}" and "${constNames.get(c)}" both map to Dart constant "${c}"`);
+      constNames.set(c, v);
+      out.push(`  static const String ${c} = ${JSON.stringify(v)};`);
+    }
+    out.push(`  static const List<String> values = <String>[${values.map((v) => JSON.stringify(v)).join(", ")}];`);
+    out.push("}", "");
+  }
+
+  for (const t of types) {
+    // camelCasing two distinct wire names onto one Dart identifier would emit a
+    // class that does not compile; fail loudly at generation time instead.
+    const idents = new Map();
+    for (const p of t.props) {
+      const id = dartIdent(p.name);
+      if (idents.has(id)) fail(`${t.source}:${t.name}: "${p.name}" and "${idents.get(id)}" both map to Dart identifier "${id}"`);
+      idents.set(id, p.name);
+    }
+
+    if (t.description) out.push(`/// ${cLine(t.description)}`);
+    out.push(`final class ${t.name} {`);
+    // `required` tracks JSON Schema `required`, not nullability: a required
+    // nullable field must still be passed explicitly (as null), matching the
+    // non-omittable key TypeScript, Go, and serde all produce for it.
+    out.push(`  const ${t.name}({${t.props.map((p) => `${p.required ? "required " : ""}this.${dartIdent(p.name)}`).join(", ")}});`);
+    out.push("");
+
+    for (const p of t.props) {
+      let doc = p.description ? cLine(p.description) : "";
+      if (isStringEnum(p.schema)) doc = `${doc} (one of: ${nonNullSchema(p.schema).enum.join(", ")})`.trim();
+      if (doc) out.push(`  /// ${doc}`);
+      const optional = !p.required || isNullable(p.schema);
+      out.push(`  final ${dartType(p.schema)}${optional ? "?" : ""} ${dartIdent(p.name)};`);
+    }
+
+    out.push("");
+    out.push(`  factory ${t.name}.fromJson(Map<String, Object?> json) => ${t.name}(`);
+    for (const p of t.props) {
+      const expr = `json[${JSON.stringify(p.name)}]`;
+      // Guard whenever the value may legitimately be absent OR explicitly null:
+      // `null as String` throws, so a required-but-nullable field needs it too.
+      const guard = !p.required || isNullable(p.schema);
+      const value = guard ? `${expr} == null ? null : ${dartDecode(p.schema, expr)}` : dartDecode(p.schema, expr);
+      out.push(`    ${dartIdent(p.name)}: ${value},`);
+    }
+    out.push("  );", "");
+
+    out.push("  Map<String, Object?> toJson() => {");
+    for (const p of t.props) {
+      const id = dartIdent(p.name);
+      const optional = !p.required || isNullable(p.schema);
+      const encoded = dartEncode(p.schema, id, optional);
+      // Required-but-nullable keys stay present with an explicit null; only
+      // genuinely optional keys are omitted, matching serde's skip_serializing_if.
+      out.push(`    ${p.required ? "" : `if (${id} != null) `}${JSON.stringify(p.name)}: ${encoded},`);
+    }
+    out.push("  };", "}", "");
+  }
+
+  return {
+    "dart/lib/canonical_interfaces.dart": out.join("\n"),
+    // Compatibility shim: `generated/dart/lib/quote_v1.dart` was the whole Dart
+    // surface before every type was emitted. Kept so existing imports resolve.
+    "dart/lib/quote_v1.dart": [
+      `// ${BANNER}`,
+      "",
+      "/// Deprecated path. The generated Dart surface now covers every schema type",
+      "/// and lives in `canonical_interfaces.dart`; import that directly instead.",
+      "export 'canonical_interfaces.dart';",
+      "",
+    ].join("\n"),
+    "dart/pubspec.yaml": "name: canonical_interfaces\ndescription: Generated typed payloads for the canonical.cloud API.\nversion: 0.1.0\npublish_to: none\nenvironment:\n  sdk: '>=3.8.0 <4.0.0'\n",
+  };
+}
+
 const EMITTERS = {
   rust: emitRust,
   "rust-wasm": emitRustWasm,
   typescript: emitTs,
   python: emitPython,
   go: emitGo,
-  // TODO(client langs): dart, ruby, java, csharp, php, elixir — one render fn each.
+  dart: emitDart,
+  // TODO(client langs): ruby, java, csharp, php, elixir — one render fn each.
 };
 
 // --- run ---------------------------------------------------------------------

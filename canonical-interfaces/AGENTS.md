@@ -7,7 +7,9 @@ Schema in `schema/` is generated into per-language adapters under `generated/`.
 
 - `schema/*.schema.json` — the source of truth (indexed by `schema/index.json`).
 - `sql/schema.sql` — canonical Postgres schema for stored entities.
-- `src/generate.mjs` — the generator (schema → TS/Rust/Python/Go).
+- `src/generate.mjs` — the generator (schema → TS/Rust/Dart/Python/Go). Every
+  language is emitted from `schema/index.json` by one `EMITTERS` entry; a
+  language must never be generated from a narrower source than the others.
 - `src/generate.test.mjs` — generator self-tests + `--check`.
 - `generated/<lang>/` — **adapters only; never hand-edit.**
 - `tests/interface-wasm-browser/` — hermetic Chromium contract for the generated

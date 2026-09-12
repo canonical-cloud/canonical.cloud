@@ -18,7 +18,7 @@ as a `$def` and regenerate.
 | TypeScript | `generated/typescript/index.ts` |
 | Rust (serde) | `generated/rust/src/lib.rs` |
 | Rust → WebAssembly (tsify) | `generated/rust-wasm/src/lib.rs` |
-| Dart / Flutter quote v1 | `generated/dart/lib/quote_v1.dart` |
+| Dart / Flutter | `generated/dart/lib/canonical_interfaces.dart` |
 | Python (dataclasses) | `generated/python/canonical_interfaces.py` |
 | Go | `generated/go/interfaces.go` |
 

@@ -1,5 +1,5 @@
 name: canonical_interfaces
-description: Generated quote v1 payloads for canonical.plus.
+description: Generated typed payloads for the canonical.cloud API.
 version: 0.1.0
 publish_to: none
 environment:

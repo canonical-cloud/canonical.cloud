@@ -33,6 +33,22 @@ The edge strips caller-supplied versions of these headers. The API never accepts
 
 The app and API hosts use the same path shapes. Authentication differs by host. Query-string bearer tokens are prohibited. Non-browser SDKs authenticate the WebSocket upgrade with the same bearer authority as REST; browser clients use the `app.canonical.plus` BFF/cookie route.
 
+## Golden fixture inventory
+
+Every public payload has one synthetic, versioned example. `fixtures/quote-v1/manifest.json` binds the paths below to their reviewed Git blobs and the schema revision.
+
+| Definition | Fixture |
+| --- | --- |
+| `QuoteRequest` | `fixtures/quote-v1/create-request.json` |
+| `QuoteSubmissionResponse` | `fixtures/quote-v1/submission-response.json` |
+| `QuoteDetail` | `fixtures/quote-v1/detail-ready.json` |
+| `QuoteListResponse` | `fixtures/quote-v1/list-response.json` |
+| `QuoteStatusEvent` | `fixtures/quote-v1/status-event.json` |
+| `QuoteProblem` | `fixtures/quote-v1/problem.json` |
+| `QuoteRetryResponse` | `fixtures/quote-v1/retry-response.json` |
+
+The fixtures contain no credential, customer record, prompt, model secret, or regulated data. Consumers must reproduce the applicable wire fixtures byte-for-byte or prove semantic compatibility through generated bindings and executable tests.
+
 ## State machine
 
 Public quote status is exactly:
