@@ -16,7 +16,7 @@
     "prebuild": "npm run lint:ores"
   },
   "dependencies": {
-    "astro": "^7.1.6"
+    "astro": "^7.2.8"
   },
   "devDependencies": {
     "playwright": "^1.62.1",
